@@ -1,0 +1,35 @@
+{
+	"name": "@htw-aladin/graphgrammar",
+	"version": "0.0.1",
+	"description": "Wrapper around GrGen.Net to generate and manipulate graphs.",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"prepublish": "tsc",
+		"test": "jest"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/HTW-ALADIN/GraphGrammar.git"
+	},
+	"keywords": [],
+	"author": "Paul Christ",
+	"license": "WTFPL",
+	"bugs": {
+		"url": "https://github.com/HTW-ALADIN/GraphGrammar/issues"
+	},
+	"homepage": "https://github.com/HTW-ALADIN/GraphGrammar#readme",
+	"dependencies": {
+		"dotenv": "^16.3.1"
+	},
+	"devDependencies": {
+		"@types/jest": "^29.5.2",
+		"@typescript-eslint/eslint-plugin": "^5.59.11",
+		"@typescript-eslint/parser": "^5.59.11",
+		"eslint": "^8.43.0",
+		"jest": "^29.5.0",
+		"prettier": "^2.8.8",
+		"ts-node": "^10.9.1",
+		"typescript": "^5.1.3"
+	}
+}

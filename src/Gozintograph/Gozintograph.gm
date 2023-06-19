@@ -1,0 +1,16 @@
+node class BaseNode {
+    id: int;
+    Value: int;
+}
+
+node class Product extends BaseNode;
+node class IntermediateProduct extends BaseNode;
+node class BuyingPart extends BaseNode;
+node class Resource extends BaseNode;
+
+edge class ForwardEdge {
+    id: int;
+    Value: int;
+}
+
+node class StartNode;
