@@ -1,0 +1,18 @@
+abstract node class idNode {
+    id: string;
+}
+
+abstract node class Gate extends idNode {
+    type: string; 
+}
+node class Event extends idNode;
+node class Function extends idNode;
+
+abstract edge class BaseEdge;
+
+edge class ForwardEdge extends BaseEdge;
+edge class BackwardEdge extends BaseEdge;
+
+node class OrGate extends Gate;
+node class XorGate extends Gate;
+node class AndGate extends Gate;

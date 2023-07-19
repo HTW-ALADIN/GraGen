@@ -1,0 +1,19 @@
+#using "EPC.gm"
+
+pattern Structural {
+    x:Event -:ForwardEdge-> y:Function -:ForwardEdge-> x1:Event;
+}
+
+rule initGraph {
+    replace {
+        x:Event -:ForwardEdge-> y:Function -:ForwardEdge-> x1:Event;
+    }
+}
+
+rule switchS {
+    x:Event -:ForwardEdge-> y:Function;
+
+    replace {
+        s:Structural -:ForwardEdge-> y;
+    }
+}

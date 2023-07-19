@@ -1,0 +1,28 @@
+﻿# begin of graph "BP" saved by GrsExport
+
+new graph "BP" "BP"
+new :Pattern($ = "$F", id = "", type = "OR", depth = 4, width = 7, probability = 2)
+new :Pattern($ = "$D", id = "", type = "AND", depth = 4, width = 7, probability = 2)
+new :Pattern($ = "$B", id = "", type = "OR", depth = 3, width = 5, probability = 2)
+new :Pattern($ = "$9", id = "", type = "OR", depth = 3, width = 5, probability = 2)
+new :Pattern($ = "$7", id = "", type = "LOOP", depth = 3, width = 5, probability = 2)
+new :Pattern($ = "$5", id = "", type = "OR", depth = 3, width = 5, probability = 2)
+new :Pattern($ = "$3", id = "", type = "AND", depth = 2, width = 3, probability = 2)
+new :Pattern($ = "$1", id = "", type = "LOOP", depth = 2, width = 3, probability = 2)
+new :Pattern($ = "$0", id = "", type = "AND", depth = 1, width = 1, probability = 1)
+# total number of nodes: 9
+
+new @("$5") - :PatternConnector($ = "$10") -> @("$F")
+new @("$5") - :PatternConnector($ = "$E") -> @("$D")
+new @("$3") - :PatternConnector($ = "$C") -> @("$B")
+new @("$3") - :PatternConnector($ = "$A") -> @("$9")
+new @("$1") - :PatternConnector($ = "$8") -> @("$7")
+new @("$1") - :PatternConnector($ = "$6") -> @("$5")
+new @("$0") - :PatternConnector($ = "$4") -> @("$3")
+new @("$0") - :PatternConnector($ = "$2") -> @("$1")
+# total number of edges: 8
+
+# total number of internal class objects: 0
+
+# end of graph "BP" saved by GrsExport
+

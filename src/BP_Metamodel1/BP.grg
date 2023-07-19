@@ -1,0 +1,180 @@
+#using "BP.gm"
+
+// ##########################################################################
+// ##################          GENERATE TREE          #######################
+// ##########################################################################
+rule initGraph {
+    modify {
+        :Pattern@(type = pickReplacementPattern(), depth = 1);
+    }
+}
+
+rule matchPattern {
+    x:Pattern;
+    negative {
+        x -e:PatternConnector-> y:Pattern;
+    }
+
+--- 
+    def var prob:double;
+    yield {
+        yield prob = x.probability;
+    }
+
+    modify {
+        ---
+        def var edgeAmount:int = setEdgeAmount(2,4,x); 
+        //if { {{x.type == "SEQ"}}; { edgeAmount = 1}; }
+        //exec($.(0.2 $[generateANDPattern(x)][edgeAmount:edgeAmount], 0.2 $[generateORPattern(x)][edgeAmount:edgeAmount], 0.15 $[generateXORPattern(x)][edgeAmount:edgeAmount], 0.1 $[generateLOOPPattern(x)][edgeAmount:edgeAmount], 0.35 $[generateSEQPattern(x)]))
+        exec(addAndConnectPattern(pickReplacementPattern(), x)[edgeAmount:edgeAmount]);
+        eval {
+            x.outdegree = edgeAmount;
+        }
+    }
+} \ orderDescendingBy<prob>
+
+rule addAndConnectPattern(var patternType:string, parentPattern: Pattern) {
+    modify {
+        parentPattern -:PatternConnector-> y:Pattern@(type = patternType, probability = random());
+    }
+}
+
+
+// ##########################################################################
+// ##################           GENERATE EPC          #######################
+// ##########################################################################
+
+// ##########################################################################
+// ##################             LEAF CASE           #######################
+// ##########################################################################
+rule transformLeafPattern {
+    // must have parent node
+    y:Pattern -pc:PatternConnector -> x:Pattern;
+    // can't have any child nodes
+    negative {
+        x --> .;
+    }
+
+    modify {
+        ---
+        exec(insertLeafANDPattern(x,y) || insertORPattern(x,y) || insertXORPattern(x,y) || insertLOOPPattern(x,y) || insertLeafSEQPattern(x,y));
+        eval {
+            rem(x);
+            rem(pc);
+        }
+    }
+}
+
+rule insertLeafSEQPattern(currentPattern:Pattern, parentPattern:Pattern) {
+    if (currentPattern.type == "SEQ");
+    modify {
+        parentPattern -:ForwardEdge-> :Event -:ForwardEdge-> :Function;
+    }
+}
+
+rule insertEventSequence(parentNode:node, childNode:node;) {
+    modify {
+        parentNode -:ForwardEdge-> :Event -:ForwardEdge-> :Function -:ForwardEdge-> :Event -:ForwardEdge-> childNode;
+    }
+}
+
+rule insertLeafANDPattern(currentPattern:Pattern, parentPattern:Pattern) {
+    if (currentPattern.type == "AND");
+    modify {
+        parentPattern -:ForwardEdge-> openingGate:AndGate@(type="open");
+        closingGate:AndGate@(type="closed");
+        ---
+
+    }
+}
+
+rule transformRootPattern {
+    x:Pattern -pc:PatternConnector-> y:Pattern;
+    negative {
+        . --> x;
+    }
+
+    modify {
+        ---
+        exec(insertANDPattern(x,y) || insertORPattern(x,y) || insertXORPattern(x,y) || insertLOOPPattern(x,y) || insertSEQPattern(x,y));
+        eval {
+            rem(x);
+            rem(pc);
+        }
+    }
+}
+
+
+rule insertORPattern(currentPattern:Pattern, parentPattern:Pattern) {
+    if (currentPattern.type == "ORs");
+}
+rule insertXORPattern(currentPattern:Pattern, parentPattern:Pattern) {
+    if (currentPattern.type == "XORs");
+}
+rule insertLOOPPattern(currentPattern:Pattern, parentPattern:Pattern) {
+    if (currentPattern.type == "LOOPs");
+}
+
+
+
+
+
+
+
+
+
+
+// ##########################################################################
+// ##################                UTILITY          #######################
+// ##########################################################################
+function randomInteger() : int {
+    return((int)Math::round(random() * 10000));
+}
+function randomIntInRange(var lowerBound: int, var upperBound: int) : int {
+    return((randomInteger() % (upperBound - lowerBound + 1)) + lowerBound);
+}
+function setEdgeAmount(var lowerBound: int, var upperBound: int, x:Pattern) : int {
+    def var edgeAmount:int = randomIntInRange(lowerBound, upperBound);
+    if (x.type == "SEQ") {
+        edgeAmount = 1;
+    }
+    return(edgeAmount);
+}
+
+
+function weightMapToRangeMap(ref weightMap:map<string, double>): map<double, string> {
+    def ref rangeMap:map<double, string> = map<double, string>{};
+    def var sum:double = 0.0;
+    for(k:string -> v:double in weightMap) {
+        sum = sum + v;
+        rangeMap.add(sum, k);
+    }
+    return(rangeMap);
+}
+
+function sampleFromRangeMap(ref rangeMap:map<double,string>): string {
+    def var randomValue:double = random();
+    def var sampledValue:string;
+    def var lowerBound:double = 0.0;
+
+    for(upperBound:double -> v:string in rangeMap) {
+        if (randomValue >= lowerBound && randomValue <= upperBound) {
+            sampledValue = v;
+            break;
+        }
+    }
+    return(sampledValue);
+}
+
+function pickReplacementPattern(): string {
+    def ref weightedPatterns:map<string, double> = map<string, double>{
+        "AND"->0.2,
+        "OR"->0.2,
+        "XOR"->0.15,
+        "LOOP"->0.1,
+        "SEQ"->0.35
+    };
+    def ref weightRangePatterns:map<double, string> = weightMapToRangeMap(weightedPatterns);
+    def var replacementPattern:string = sampleFromRangeMap(weightRangePatterns);
+    return (replacementPattern);
+}

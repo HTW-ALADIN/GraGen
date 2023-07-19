@@ -1,14 +1,3 @@
-export class GrGenModel {
-	constructor(private nodeClasses: Array<GrGenNode>, private edgeClasses: Array<GrGenEdge>) {}
-
-	public writeModel() {
-		const nodeClassesString = this.nodeClasses.map((nodeClass) => nodeClass.writeEntity()).join("\n");
-		const edgeClassesString = this.edgeClasses.map((edgeClass) => edgeClass.writeEntity()).join("\n");
-
-		return `${nodeClassesString}\n${edgeClassesString}`;
-	}
-}
-
 export enum GrGenEntityAttributeType {
 	STRING = "string",
 	INT = "int",
@@ -69,42 +58,5 @@ export class GrGenEntity {
 			return ` {\n${entityAttributes}}`;
 		}
 		return "";
-	}
-}
-
-export class GrGenNode extends GrGenEntity {
-	constructor(
-		name: string,
-		isAbstract: boolean = false,
-		entityAttributes: GrGenEntityAttributes = {},
-		inheritedEntities: Array<string> = []
-	) {
-		super(name, isAbstract, entityAttributes, inheritedEntities);
-		this.entityType = "node";
-	}
-}
-
-export enum GrGenEdgeType {
-	ARBITRARY = "arbitrary",
-	DIRECTED = "directed",
-	UNDIRECTED = "undirected",
-}
-export class GrGenEdge extends GrGenEntity {
-	constructor(
-		name: string,
-		protected edgeType: GrGenEdgeType = GrGenEdgeType.DIRECTED,
-		isAbstract: boolean = false,
-		entityAttributes: GrGenEntityAttributes = {},
-		inheritedEntities: Array<string> = []
-	) {
-		super(name, isAbstract, entityAttributes, inheritedEntities);
-		this.entityType = "edge";
-	}
-
-	public writeEntity(): string {
-		const { abstractModifierString, classIdentifierString, inheritedEntitiesString, entityAttributesString } =
-			this.constructEntityStrings();
-
-		return `${abstractModifierString}${this.edgeType} ${this.entityType} ${classIdentifierString}${inheritedEntitiesString}${entityAttributesString};`;
 	}
 }

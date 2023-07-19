@@ -1,0 +1,205 @@
+# begin of graph "DefaultGraph" saved by GrsExport
+
+new graph "EPC" "DefaultGraph"
+# total number of nodes: 0
+
+# total number of edges: 0
+
+# total number of internal class objects: 0
+
+# end of graph "DefaultGraph" saved by GrsExport
+
+# match of loadGraph selected
+# rewriting selected match
+new :Pattern($="$0")
+new :Pattern($="$1")
+new :Pattern($="$2")
+new :Pattern($="$3")
+new :Pattern($="$4")
+new :Pattern($="$5")
+new :Pattern($="$6")
+new :Pattern($="$7")
+new :Pattern($="$8")
+new @("$0") -:PatternConnector($="$9")-> @("$1")
+new @("$0") -:PatternConnector($="$A")-> @("$2")
+new @("$1") -:PatternConnector($="$B")-> @("$3")
+new @("$1") -:PatternConnector($="$C")-> @("$4")
+new @("$2") -:PatternConnector($="$D")-> @("$5")
+new @("$2") -:PatternConnector($="$E")-> @("$6")
+new @("$3") -:PatternConnector($="$F")-> @("$7")
+new @("$3") -:PatternConnector($="$10")-> @("$8")
+# match of insertLeaf selected
+# rewriting selected match
+new :OrGate($="$11")
+new :OrGate($="$12")
+new :Function($="$13")
+@("$11").type = "open"
+@("$11").id = "$8"
+@("$12").type = "close"
+@("$12").id = "$8"
+@("$13").id = "$8"
+new @("$13") -:ForwardEdge($="$14")-> @("$11")
+new :Event($="$15")
+new :Function($="$16")
+new @("$11") -:ForwardEdge($="$17")-> @("$15")
+new @("$15") -:ForwardEdge($="$18")-> @("$16")
+new @("$16") -:ForwardEdge($="$19")-> @("$12")
+new :Event($="$1A")
+new :Function($="$1B")
+new @("$11") -:ForwardEdge($="$1C")-> @("$1A")
+new @("$1A") -:ForwardEdge($="$1D")-> @("$1B")
+new @("$1B") -:ForwardEdge($="$1E")-> @("$12")
+new :Event($="$1F")
+new :Function($="$20")
+new @("$11") -:ForwardEdge($="$21")-> @("$1F")
+new @("$1F") -:ForwardEdge($="$22")-> @("$20")
+new @("$20") -:ForwardEdge($="$23")-> @("$12")
+new :Event($="$24")
+new :Function($="$25")
+new @("$11") -:ForwardEdge($="$26")-> @("$24")
+new @("$24") -:ForwardEdge($="$27")-> @("$25")
+new @("$25") -:ForwardEdge($="$28")-> @("$12")
+new @("$3") -:ForwardEdge($="$29")-> @("$13")
+delete edge @("$10")
+delete node @("$8")
+# match of insertLeaf selected
+# rewriting selected match
+new :AndGate($="$2A")
+new :AndGate($="$2B")
+@("$2A").type = "open"
+@("$2A").id = "$7"
+@("$2B").type = "close"
+@("$2B").id = "$7"
+new @("$3") -:ForwardEdge($="$2C")-> @("$2A")
+new :Event($="$2D")
+new :Function($="$2E")
+new @("$2A") -:ForwardEdge($="$2F")-> @("$2D")
+new @("$2D") -:ForwardEdge($="$30")-> @("$2E")
+new @("$2E") -:ForwardEdge($="$31")-> @("$2B")
+new :Event($="$32")
+new :Function($="$33")
+new @("$2A") -:ForwardEdge($="$34")-> @("$32")
+new @("$32") -:ForwardEdge($="$35")-> @("$33")
+new @("$33") -:ForwardEdge($="$36")-> @("$2B")
+delete edge @("$F")
+delete node @("$7")
+# match of insertLeaf selected
+# rewriting selected match
+new :OrGate($="$37")
+new :OrGate($="$38")
+new :Function($="$39")
+@("$37").type = "open"
+@("$37").id = "$6"
+@("$38").type = "close"
+@("$38").id = "$6"
+@("$39").id = "$6"
+new @("$39") -:ForwardEdge($="$3A")-> @("$37")
+new :Event($="$3B")
+new :Function($="$3C")
+new @("$37") -:ForwardEdge($="$3D")-> @("$3B")
+new @("$3B") -:ForwardEdge($="$3E")-> @("$3C")
+new @("$3C") -:ForwardEdge($="$3F")-> @("$38")
+new :Event($="$40")
+new :Function($="$41")
+new @("$37") -:ForwardEdge($="$42")-> @("$40")
+new @("$40") -:ForwardEdge($="$43")-> @("$41")
+new @("$41") -:ForwardEdge($="$44")-> @("$38")
+new :Event($="$45")
+new :Function($="$46")
+new @("$37") -:ForwardEdge($="$47")-> @("$45")
+new @("$45") -:ForwardEdge($="$48")-> @("$46")
+new @("$46") -:ForwardEdge($="$49")-> @("$38")
+new :Event($="$4A")
+new :Function($="$4B")
+new @("$37") -:ForwardEdge($="$4C")-> @("$4A")
+new @("$4A") -:ForwardEdge($="$4D")-> @("$4B")
+new @("$4B") -:ForwardEdge($="$4E")-> @("$38")
+new @("$2") -:ForwardEdge($="$4F")-> @("$39")
+delete edge @("$E")
+delete node @("$6")
+# match of insertLeaf selected
+# rewriting selected match
+new :OrGate($="$50")
+new :OrGate($="$51")
+new :Function($="$52")
+@("$50").type = "open"
+@("$50").id = "$5"
+@("$51").type = "close"
+@("$51").id = "$5"
+@("$52").id = "$5"
+new @("$52") -:ForwardEdge($="$53")-> @("$50")
+new :Event($="$54")
+new :Function($="$55")
+new @("$50") -:ForwardEdge($="$56")-> @("$54")
+new @("$54") -:ForwardEdge($="$57")-> @("$55")
+new @("$55") -:ForwardEdge($="$58")-> @("$51")
+new :Event($="$59")
+new :Function($="$5A")
+new @("$50") -:ForwardEdge($="$5B")-> @("$59")
+new @("$59") -:ForwardEdge($="$5C")-> @("$5A")
+new @("$5A") -:ForwardEdge($="$5D")-> @("$51")
+new :Event($="$5E")
+new :Function($="$5F")
+new @("$50") -:ForwardEdge($="$60")-> @("$5E")
+new @("$5E") -:ForwardEdge($="$61")-> @("$5F")
+new @("$5F") -:ForwardEdge($="$62")-> @("$51")
+new :Event($="$63")
+new :Function($="$64")
+new @("$50") -:ForwardEdge($="$65")-> @("$63")
+new @("$63") -:ForwardEdge($="$66")-> @("$64")
+new @("$64") -:ForwardEdge($="$67")-> @("$51")
+new @("$2") -:ForwardEdge($="$68")-> @("$52")
+delete edge @("$D")
+delete node @("$5")
+# match of insertLeaf selected
+# rewriting selected match
+new :OrGate($="$69")
+new :XorGate($="$6A")
+new :Function($="$6B")
+@("$69").type = "close"
+@("$69").id = "$4"
+@("$6A").type = "open"
+@("$6A").id = "$4"
+@("$6B").id = "$4"
+new @("$6B") -:ForwardEdge($="$6C")-> @("$69")
+new :Event($="$6D")
+new :Function($="$6E")
+new @("$69") -:ForwardEdge($="$6F")-> @("$6D")
+new @("$6D") -:ForwardEdge($="$70")-> @("$6E")
+new @("$6E") -:ForwardEdge($="$71")-> @("$6A")
+new :Event($="$72")
+new :Function($="$73")
+new @("$6A") -:BackwardEdge($="$74")-> @("$72")
+new @("$72") -:BackwardEdge($="$75")-> @("$73")
+new @("$73") -:BackwardEdge($="$76")-> @("$69")
+new @("$1") -:ForwardEdge($="$77")-> @("$6B")
+delete edge @("$C")
+delete node @("$4")
+# match of insertNode selected
+# rewriting selected match
+new :OrGate($="$78")
+new :OrGate($="$79")
+new :Function($="$7A")
+@("$78").type = "open"
+@("$78").id = "$3"
+@("$79").type = "close"
+@("$79").id = "$3"
+@("$7A").id = "$3"
+new @("$7A") -:ForwardEdge($="$7B")-> @("$78")
+new :Function($="$7C")
+new @("$78") -:ForwardEdge($="$7D")-> @("$7C")
+new @("$7C") -:ForwardEdge($="$7E")-> @("$2A")
+new :Function($="$7F")
+new @("$2A") -:ForwardEdge($="$80")-> @("$7F")
+new @("$7F") -:ForwardEdge($="$81")-> @("$79")
+new :Event($="$82")
+new @("$78") -:ForwardEdge($="$83")-> @("$82")
+new @("$82") -:ForwardEdge($="$84")-> @("$13")
+new :Function($="$85")
+new @("$11") -:ForwardEdge($="$86")-> @("$85")
+new @("$85") -:ForwardEdge($="$87")-> @("$79")
+new @("$1") -:ForwardEdge($="$88")-> @("$7A")
+delete edge @("$2C")
+delete edge @("$29")
+delete edge @("$B")
+delete node @("$3")

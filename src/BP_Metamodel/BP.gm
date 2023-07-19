@@ -1,0 +1,12 @@
+node class Pattern {
+    id: string;
+    type: string;
+    depth: int;
+    width: int;
+
+    probability: double;
+}
+
+index depthIndex { Pattern.depth }
+
+edge class PatternConnector;

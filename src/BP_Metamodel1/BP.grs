@@ -1,0 +1,31 @@
+new graph BP "BP"
+
+record testRecord.grs start
+randomseed 32101
+
+# Set Layout
+debug enable
+debug set layout Hierarchic
+# Gate Style
+dump set node Gate color LightGrey
+dump set node Gate shape circle
+#dump set node Gate labels off
+# Event Style
+dump set node Event color Red
+dump set node Event shape hexagon
+# Function Style
+dump set node Function color Green
+dump set node Function shape box
+
+# generate Pattern-Tree
+exec initGraph()
+exec matchPattern[1:3]
+
+# generate EPC
+debug exec [transformLeafPattern]
+
+#dump graph test.gcv
+export test.grs
+record testRecord.grs stop
+
+#quit
