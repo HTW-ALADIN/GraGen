@@ -183,7 +183,10 @@ export class GraphGenerationEngine {
 					[parentId, childId] = epcGraph.extremities(replacementEdge);
 					parentRequires = this.inferPathTypeRequirement(epcGraph, parentId);
 					childRequires = this.inferPathTypeRequirement(epcGraph, childId);
+
+					epcGraph.dropEdge(replacementEdge);
 				}
+
 				const nodeType = graph.getNodeAttribute(node, "type");
 				const patternId = uuidv4();
 				this.constructPattern(
@@ -197,17 +200,25 @@ export class GraphGenerationEngine {
 					patternId
 				);
 				patternIdMap[node] = patternId;
+
+				// !!!! DEBUG !!!!
+				// const EPCStyle = JSON.parse(fs.readFileSync(__dirname + "/EPCShape.json", "utf8"));
+				// const s = new DOTSerialiser(epcGraph, { nodes: EPCStyle });
+				// fs.writeFileSync("epc.dot", s.serialise("both"));
+				// console.log(parentId, childId, parentRequires, childRequires);
+				// console.log(parentId, childId, parentRequires, childRequires);
 			}
 		}
 
-		const s = new DOTSerialiser(epcGraph);
+		const EPCStyle = JSON.parse(fs.readFileSync(__dirname + "/EPCShape.json", "utf8"));
+		const s = new DOTSerialiser(epcGraph, { nodes: EPCStyle });
 		fs.writeFileSync("epc.dot", s.serialise("both"));
 	}
 
 	private inferPathTypeRequirement(graph: Graph, nodeId: string) {
 		let type = graph.getNodeAttribute(nodeId, "type");
 
-		if (!["XORGate", "ANDGate", "ORGate"].includes(type)) {
+		if (["XORGate", "ANDGate", "ORGate"].includes(type)) {
 			graph.inboundNeighbors(nodeId).forEach((node) => {
 				type = graph.getNodeAttribute(node, "type");
 			});
@@ -235,7 +246,7 @@ export class GraphGenerationEngine {
 			const [[nodeSchemaCardinality]] = cardinality ? randomSample<number>(cardinality, 1, false, this.rng) : [[1]];
 			for (let j = 0; j < nodeSchemaCardinality; j++) {
 				const nodeId = idGenerator();
-				graph.addNode(nodeId, { ...attributes, type, patternId });
+				graph.addNode(nodeId, { ...attributes, type, patternId, patternType });
 				concreteNodeMap[nodeSchemaName] = [...(concreteNodeMap[nodeSchemaName] || []), nodeId];
 			}
 		});
@@ -249,7 +260,7 @@ export class GraphGenerationEngine {
 				concreteNodes.forEach((nodeId) => {
 					abstractTargets.forEach((abstractTarget: string) => {
 						concreteNodeMap[abstractTarget].forEach((concreteTarget: string) => {
-							graph.addEdge(nodeId, concreteTarget, { ...edgeAttributes, patternId });
+							graph.addEdge(nodeId, concreteTarget, { ...edgeAttributes, patternId, patternType });
 						});
 					});
 				});
@@ -269,8 +280,9 @@ export class GraphGenerationEngine {
 		// only in first iteration is parent the first node
 		let subParent: string = parent;
 		let subParentRequires: string = parentRequires;
+		let nodeIds: Array<string> = [];
 		Object.entries(concreteNodeMap).forEach(([abstractNode, concreteNodes], i) => {
-			// infer childRequirement for all sequence nodes between targets, so that the end ndoe is of the same type
+			// infer childRequirement for all sequence nodes between targets, so that the end node is of the same type
 			let subChild: string;
 			let subChildRequires: string;
 			const [[requiredType]] = randomSample(["Function", "Event"], 1, false, this.rng);
@@ -283,7 +295,7 @@ export class GraphGenerationEngine {
 					subChild = child;
 					subChildRequires = childRequires;
 
-					const { type: abstractType } = patternNodes[abstractNode];
+					const { type: abstractType, cardinality } = patternNodes[abstractNode];
 					if (abstractType === "SEQ") {
 						const nodeIds = this.constructSequence(
 							graph,
@@ -293,7 +305,8 @@ export class GraphGenerationEngine {
 							subParentRequires,
 							subChildRequires,
 							patternId,
-							false
+							false,
+							patternType
 						);
 
 						// subParentRequirement is based on the type of the last node in the sequence
@@ -307,18 +320,13 @@ export class GraphGenerationEngine {
 				if (EPCPatterns[patternType].edges[abstractNode]) {
 					const abstractTargets = EPCPatterns[patternType].edges[abstractNode].target;
 
-					// ELSE attach pattern child node to pattern target node
+					// ATTACH pattern child node to pattern target node
 					abstractTargets.forEach((abstractTarget: string) => {
 						if (patternNodes[abstractNode]) {
 							const { type: abstractType } = patternNodes[abstractNode];
 							const edgeAttributes = EPCPatterns[patternType].edges[abstractNode].attributes;
 
 							if (abstractType === "SEQ") {
-								// !!!DEBUGGING!!
-								// const s = new DOTSerialiser(graph);
-								// fs.writeFileSync("epc.dot", s.serialise("both"));
-								// !!!DEBUGGING!!
-
 								// infer childRequirement if not gate or another sequence
 								const { type: targetType } = patternNodes[abstractTarget];
 								// in case of non-gate or SEQ (Event or Function) infer requirement by concrete Node type
@@ -329,11 +337,10 @@ export class GraphGenerationEngine {
 									const [[requiredType]] = randomSample(["Function", "Event"], 1, false, this.rng);
 									subChildRequires = this.inferTypeRequirement(requiredType);
 								}
-
 								concreteNodeMap[abstractTarget].forEach((concreteTarget: string) => {
 									subChild = concreteTarget;
 
-									const nodeIds = this.constructSequence(
+									nodeIds = this.constructSequence(
 										graph,
 										idGenerator,
 										subParent,
@@ -341,11 +348,9 @@ export class GraphGenerationEngine {
 										subParentRequires,
 										subChildRequires,
 										patternId,
-										edgeAttributes.eligibleEdge
+										edgeAttributes.eligibleEdge,
+										patternType
 									);
-
-									// subParentRequirement is based on the type of the last node in the sequence
-									subParentRequires = this.inferTypeRequirement(graph.getNodeAttribute(nodeIds.at(-1), "type"));
 
 									// drop Sequence shadowNode as it has been replaced
 									graph.dropNode(nodeId);
@@ -361,10 +366,15 @@ export class GraphGenerationEngine {
 							if (!["XORGate", "ANDGate", "ORGate", "SEQ"].includes(abstractType)) {
 								subParentRequires = this.inferTypeRequirement(abstractType);
 							}
+							// else {
+							// 	subParentRequires = this.inferPathTypeRequirement(graph, subParent);
+							// }
 						}
 					});
 				}
 			});
+			// subParentRequirement is based on the type of the last node in the sequence
+			subParentRequires = this.inferTypeRequirement(graph.getNodeAttribute(nodeIds.at(-1), "type"));
 		});
 	}
 
@@ -380,23 +390,25 @@ export class GraphGenerationEngine {
 		parentRequires: string,
 		childRequires: string,
 		patternId: string,
-		eligibleEdge: boolean
+		eligibleEdge: boolean,
+		patternType: string
 	) {
 		const sequenceShape = this.calculateSequenceShape(parentRequires, childRequires);
+		console.log(sequenceShape, parentRequires, childRequires, parentId, childId);
 		let previousNodeId = parentId;
 		let nodeId: string;
 
 		const nodeIds: Array<string> = [];
 		for (const type of sequenceShape) {
 			nodeId = idGenerator();
-			graph.addNode(nodeId, { type, patternId });
+			graph.addNode(nodeId, { type, patternId, patternType });
 
-			graph.addEdge(previousNodeId, nodeId, { patternId, eligibleEdge });
+			graph.addEdge(previousNodeId, nodeId, { patternId, eligibleEdge, patternType });
 
 			previousNodeId = nodeId;
 			nodeIds.push(nodeId);
 		}
-		graph.addEdge(previousNodeId, childId, { patternId, eligibleEdge });
+		graph.addEdge(previousNodeId, childId, { patternId, eligibleEdge, patternType });
 
 		return nodeIds;
 	}

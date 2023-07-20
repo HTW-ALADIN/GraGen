@@ -1,0 +1,9 @@
+{
+	"Event": { "shape": "hexagon", "color": "indianred1", "style": "filled" },
+	"Function": { "shape": "rectangle", "nodeStyle": "rounded", "color": "green", "style": "filled" },
+	"ANDGate": { "shape": "circle", "color": "grey", "style": "filled" },
+	"ORGate": { "shape": "circle", "color": "grey", "style": "filled" },
+	"XORGate": { "shape": "circle", "color": "grey", "style": "filled" },
+	"OrganisationUnit": { "shape": "ellipse", "color": "yellow", "style": "filled" },
+	"InformationObject": { "shape": "rectangle", "color": "blue", "style": "filled" }
+}
