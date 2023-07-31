@@ -1,6 +1,0 @@
-new graph Gozintograph "Gozintograph"
-
-new :StartNode($=S)
-debug exec initNodes
-
-# show graph ycomp

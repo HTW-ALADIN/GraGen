@@ -1,6 +1,0 @@
-new graph Gozintograph1 "Gozintograph"
-
-debug exec initNodes
-debug exec insertEdges*
-
-# show graph ycomp

@@ -1,5 +1,0 @@
-#!/bin/sh
-YCOMP=`readlink -f "$0"`
-YCOMP_HOME=`dirname "$YCOMP"`
-# java -Xmx640m -jar "$YCOMP_HOME/yComp.jar" $* 
-"C:\Program Files (x86)\Java\jre1.8.0_351\bin\java.exe" -Xmx640m -jar "$YCOMP_HOME/yComp.jar" $* 

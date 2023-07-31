@@ -1,7 +1,7 @@
-import { HostGraphArgs, HostGraphProviderMap, HostGraphProviders } from "../HostGraph/HostGraphProviders";
-import { RNG, randomSample, statefulCounter } from "../Util";
-import Graph from "../Graph";
-import { DOTSerialiser } from "../Serialisation/DOTSerialiser";
+import { HostGraphArgs, HostGraphProviderMap, HostGraphProviders } from "../procedural/HostGraph/HostGraphProviders";
+import { RNG, randomSample, statefulCounter } from "../procedural/Util";
+import Graph from "../procedural/Graph";
+import { DOTSerialiser } from "../procedural/Serialisation/DOTSerialiser";
 import * as R from "remeda";
 import { dfsFromNode } from "graphology-traversal";
 import * as fs from "fs";
