@@ -1,10 +1,10 @@
-import Graph from "../Graph";
-import { randomSample } from "../Util";
+import Graph from "../../Graph";
+import { randomSample } from "../../Util";
 import {
 	HostGraphGenerator,
 	HostGraphGeneratorParameters,
 	HostGraphGeneratorConstructorArgs,
-} from "./HostGraphGenerator";
+} from "../HostGraphGenerator";
 
 export interface TreeGeneratorConstructorArgs extends HostGraphGeneratorConstructorArgs {}
 

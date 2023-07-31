@@ -5,5 +5,10 @@
 	"ORGate": { "shape": "circle", "color": "grey", "style": "filled" },
 	"XORGate": { "shape": "circle", "color": "grey", "style": "filled" },
 	"OrganisationUnit": { "shape": "ellipse", "color": "yellow", "style": "filled" },
-	"InformationObject": { "shape": "rectangle", "color": "blue", "style": "filled" }
+	"InformationObject": { "shape": "rectangle", "color": "blue", "style": "filled" },
+	"SEQ": { "shape": "diamond", "color": "purple", "style": "filled" },
+	"XOR": { "shape": "diamond", "color": "purple", "style": "filled" },
+	"OR": { "shape": "diamond", "color": "purple", "style": "filled" },
+	"AND": { "shape": "diamond", "color": "purple", "style": "filled" },
+	"LOOP": { "shape": "diamond", "color": "purple", "style": "filled" }
 }

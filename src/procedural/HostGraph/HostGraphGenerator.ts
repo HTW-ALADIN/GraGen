@@ -5,7 +5,6 @@ import { HostGraphProvider, ConstructorArgs, ProviderArgs } from "./HostGraphPro
 // Interfaces don't allow protected properties, so we have to use getters in the class that implements this interface.
 // https://github.com/microsoft/TypeScript/issues/25163
 export interface HostGraphGeneratorConstructorArgs extends ConstructorArgs {
-	rng?: RNG;
 	idGenerator?: Function;
 }
 

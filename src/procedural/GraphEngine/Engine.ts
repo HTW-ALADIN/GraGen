@@ -11,6 +11,7 @@ export interface GraphGenerationEngineArgs {
 	hostGraphArgs: HostGraphArgs;
 	graphLabelArgs?: GraphLabelArgs;
 	graphTransformationArgs?: GraphTransformationArgs;
+	seed?: string;
 }
 
 export interface GraphLabelArgs {
@@ -28,6 +29,7 @@ export interface GraphLabelArgs {
 export interface GraphTransformationArgs {
 	[key: string]: any;
 	labeledGraph: string;
+	populationRange: Array<number>;
 }
 
 export interface HostGraphs {
@@ -70,7 +72,8 @@ export class GraphGenerationEngine {
 
 	public generateGraph(args: GraphGenerationEngineArgs) {
 		const { hostGraphArgs, graphLabelArgs, graphTransformationArgs } = args;
-		this.rng = graphLabelArgs.rng;
+		const seed = args.seed != undefined ? args.seed : Math.random();
+		this.rng = new RNG(seed);
 
 		this.hostGraphs = this.provideHostGraphs(hostGraphArgs);
 		this.labeledGraphs = this.generateGraphSchema(graphLabelArgs);
@@ -81,16 +84,18 @@ export class GraphGenerationEngine {
 	}
 
 	private provideHostGraphs(hostGraphArgs: HostGraphArgs): HostGraphs {
-		const hostGraphs = hostGraphArgs.hostGraphs.reduce((hostGraphs, hostGraphDefinition) => {
-			const [hostGraphName] = Object.keys(hostGraphDefinition);
-			const { provider, args } = hostGraphDefinition[hostGraphName];
-			const { constructorArgs, providerArgs } = args;
-			const Provider = this.hostGraphProviderMap.get(provider);
-			const hostGraphProvider = new Provider(constructorArgs);
+		const hostGraphs = Object.entries(hostGraphArgs.hostGraphs).reduce(
+			(hostGraphs, [hostGraphName, hostGraphDefinition]) => {
+				const { provider, args } = hostGraphDefinition;
+				const { constructorArgs, providerArgs } = args;
+				const Provider = this.hostGraphProviderMap.get(provider);
+				const hostGraphProvider = new Provider({ rng: this.rng, constructorArgs });
 
-			hostGraphs[hostGraphName] = hostGraphProvider.provideHostGraph(providerArgs);
-			return hostGraphs;
-		}, {} as HostGraphs);
+				hostGraphs[hostGraphName] = hostGraphProvider.provideHostGraph(providerArgs);
+				return hostGraphs;
+			},
+			{} as HostGraphs
+		);
 
 		return hostGraphs;
 	}
@@ -153,7 +158,7 @@ export class GraphGenerationEngine {
 	}
 
 	private applyTransformationRules(args: GraphTransformationArgs, transformationOrder: TransformationOrder) {
-		const { labeledGraph } = args;
+		const { labeledGraph, populationRange } = args;
 		const { depthNodeMap, parentNodeMap, childNodeMap } = transformationOrder;
 
 		const graph = this.labeledGraphs[labeledGraph];
@@ -161,10 +166,23 @@ export class GraphGenerationEngine {
 		const idGenerator = statefulCounter();
 		const epcGraph = new Graph();
 
+		// const eventListener = (stuff: any) => {
+		// 	// !!!! DEBUG !!!!
+		// 	const EPCStyle = JSON.parse(fs.readFileSync(__dirname + "/EPCShape.json", "utf8"));
+		// 	const s = new DOTSerialiser(graph, { nodes: EPCStyle });
+		// 	fs.writeFileSync("epc.dot", s.serialise("both"));
+		// 	console.log(graph.nodes(), stuff);
+		// 	// !!!! DEBUG !!!!
+		// };
+		// epcGraph.on("nodeAdded", eventListener);
+		// epcGraph.on("edgeAdded", eventListener);
+		// epcGraph.on("nodeDropped", eventListener);
+		// epcGraph.on("edgeDropped", eventListener);
+
 		let parentId = idGenerator();
 		let childId = idGenerator();
-		epcGraph.addNode(parentId, { type: "Event" });
-		epcGraph.addNode(childId, { type: "Event" });
+		epcGraph.addNode(parentId, { type: "Event", patternTypes: ["StartEPC"], patternIds: [uuidv4()] });
+		epcGraph.addNode(childId, { type: "Event", patternTypes: ["EndEPC"], patternIds: [uuidv4()] });
 		let parentRequires = "Function";
 		let childRequires = "Function";
 		const patternIdMap: { [key: string]: string } = {};
@@ -197,16 +215,10 @@ export class GraphGenerationEngine {
 					childId,
 					parentRequires,
 					childRequires,
-					patternId
+					patternId,
+					populationRange
 				);
 				patternIdMap[node] = patternId;
-
-				// !!!! DEBUG !!!!
-				// const EPCStyle = JSON.parse(fs.readFileSync(__dirname + "/EPCShape.json", "utf8"));
-				// const s = new DOTSerialiser(epcGraph, { nodes: EPCStyle });
-				// fs.writeFileSync("epc.dot", s.serialise("both"));
-				// console.log(parentId, childId, parentRequires, childRequires);
-				// console.log(parentId, childId, parentRequires, childRequires);
 			}
 		}
 
@@ -226,6 +238,16 @@ export class GraphGenerationEngine {
 		return this.inferTypeRequirement(type);
 	}
 
+	private inferPathTypeRequirementOutgoing(graph: Graph, nodeId: string) {
+		let type = graph.getNodeAttribute(nodeId, "type");
+		if (["XORGate", "ANDGate", "ORGate"].includes(type)) {
+			graph.outboundNeighbors(nodeId).forEach((node) => {
+				type = graph.getNodeAttribute(node, "type");
+			});
+		}
+		return this.inferTypeRequirement(type);
+	}
+
 	private constructPattern(
 		graph: Graph,
 		patternType: string,
@@ -234,7 +256,8 @@ export class GraphGenerationEngine {
 		child: string,
 		parentRequires: string,
 		childRequires: string,
-		patternId: string
+		patternId: string,
+		populationRange: Array<number>
 	) {
 		const concreteNodeMap: { [key: string]: Array<string> } = {};
 
@@ -243,7 +266,12 @@ export class GraphGenerationEngine {
 			const nodeSchemaName = Object.keys(nodeSchema)[0];
 			const { type, cardinality, attributes } = nodeSchema[nodeSchemaName];
 
-			const [[nodeSchemaCardinality]] = cardinality ? randomSample<number>(cardinality, 1, false, this.rng) : [[1]];
+			let nodeSchemaCardinality = 1;
+			if (cardinality) {
+				const [min, max] = cardinality;
+				nodeSchemaCardinality = this.rng.intBetween(min, max);
+			}
+			// const [[nodeSchemaCardinality]] = cardinality ? randomSample<number>(cardinality, 1, false, this.rng) : [[1]];
 			for (let j = 0; j < nodeSchemaCardinality; j++) {
 				const nodeId = idGenerator();
 				graph.addNode(nodeId, { ...attributes, type, patternId, patternType });
@@ -294,10 +322,12 @@ export class GraphGenerationEngine {
 					// set childrequirement if last node
 					subChild = child;
 					subChildRequires = childRequires;
+					// infer childRequirement based on outgoing nodes after a gate, if last node is a gate
+					subChildRequires = this.inferPathTypeRequirementOutgoing(graph, subChild);
 
-					const { type: abstractType, cardinality } = patternNodes[abstractNode];
+					const { type: abstractType, required } = patternNodes[abstractNode];
 					if (abstractType === "SEQ") {
-						const nodeIds = this.constructSequence(
+						this.constructSequence(
 							graph,
 							idGenerator,
 							subParent,
@@ -306,11 +336,10 @@ export class GraphGenerationEngine {
 							subChildRequires,
 							patternId,
 							false,
-							patternType
+							patternType,
+							populationRange,
+							required
 						);
-
-						// subParentRequirement is based on the type of the last node in the sequence
-						subParentRequires = this.inferTypeRequirement(graph.getNodeAttribute(nodeIds.at(-1), "type"));
 
 						// drop Sequence shadowNode as it has been replaced
 						graph.dropNode(nodeId);
@@ -323,12 +352,13 @@ export class GraphGenerationEngine {
 					// ATTACH pattern child node to pattern target node
 					abstractTargets.forEach((abstractTarget: string) => {
 						if (patternNodes[abstractNode]) {
-							const { type: abstractType } = patternNodes[abstractNode];
+							const { type: abstractType, required } = patternNodes[abstractNode];
 							const edgeAttributes = EPCPatterns[patternType].edges[abstractNode].attributes;
 
 							if (abstractType === "SEQ") {
-								// infer childRequirement if not gate or another sequence
 								const { type: targetType } = patternNodes[abstractTarget];
+
+								// infer childRequirement if not gate or another sequence
 								// in case of non-gate or SEQ (Event or Function) infer requirement by concrete Node type
 								if (!["XORGate", "ANDGate", "ORGate", "SEQ"].includes(targetType)) {
 									subChildRequires = this.inferTypeRequirement(targetType);
@@ -349,32 +379,26 @@ export class GraphGenerationEngine {
 										subChildRequires,
 										patternId,
 										edgeAttributes.eligibleEdge,
-										patternType
+										patternType,
+										populationRange,
+										required
 									);
 
 									// drop Sequence shadowNode as it has been replaced
 									graph.dropNode(nodeId);
 								});
 							}
-
-							// set subParent for next iteration if it wasn't deleted (SEQ)
-							if (graph.hasNode(nodeId)) {
-								subParent = nodeId;
-							}
-
-							// set subParentRequires only if not a gate
-							if (!["XORGate", "ANDGate", "ORGate", "SEQ"].includes(abstractType)) {
-								subParentRequires = this.inferTypeRequirement(abstractType);
-							}
-							// else {
-							// 	subParentRequires = this.inferPathTypeRequirement(graph, subParent);
-							// }
 						}
 					});
 				}
+				// set subParent for next iteration if it wasn't deleted (SEQ)
+				if (graph.hasNode(nodeId) && !graph.getNodeAttribute(nodeId, "backwards")) {
+					subParent = nodeId;
+				}
+				subParentRequires = this.inferPathTypeRequirement(graph, subParent);
 			});
 			// subParentRequirement is based on the type of the last node in the sequence
-			subParentRequires = this.inferTypeRequirement(graph.getNodeAttribute(nodeIds.at(-1), "type"));
+			subParentRequires = this.inferPathTypeRequirement(graph, subParent);
 		});
 	}
 
@@ -391,10 +415,31 @@ export class GraphGenerationEngine {
 		childRequires: string,
 		patternId: string,
 		eligibleEdge: boolean,
-		patternType: string
+		patternType: string,
+		populationRange: Array<number>,
+		required: boolean
 	) {
-		const sequenceShape = this.calculateSequenceShape(parentRequires, childRequires);
-		console.log(sequenceShape, parentRequires, childRequires, parentId, childId);
+		const [min, max] = populationRange;
+		let sequenceLength = this.rng.intBetween(min, max);
+
+		let sequenceShape: Array<string> = [];
+		if (sequenceLength === 0) {
+			if (parentRequires === childRequires) {
+				if (parentRequires === "Event") {
+					sequenceShape = ["Event"];
+				} else {
+					sequenceShape = ["Function"];
+				}
+			} else if (required) {
+				if (parentRequires === "Function") {
+					sequenceShape = ["Function", "Event"];
+				} else {
+					sequenceShape = ["Event", "Function"];
+				}
+			}
+		} else {
+			sequenceShape = this.calculateSequenceShape(parentRequires, childRequires, sequenceLength);
+		}
 		let previousNodeId = parentId;
 		let nodeId: string;
 
@@ -408,38 +453,53 @@ export class GraphGenerationEngine {
 			previousNodeId = nodeId;
 			nodeIds.push(nodeId);
 		}
-		graph.addEdge(previousNodeId, childId, { patternId, eligibleEdge, patternType });
+		if (graph.hasEdge(previousNodeId, childId)) {
+			graph.setEdgeAttribute(previousNodeId, childId, "eligibleEdge", eligibleEdge);
+		} else {
+			graph.addEdge(previousNodeId, childId, { patternId, eligibleEdge, patternType });
+		}
+
+		// if (previousNodeId !== parentId) {
+		// } else if (graph.hasEdge(previousNodeId, childId)) {
+		// 	graph.setEdgeAttribute(previousNodeId, childId, "eligibleEdge", eligibleEdge);
+		// }
 
 		return nodeIds;
 	}
 
-	private calculateSequenceShape(parentRequires: string, childRequires: string) {
-		if (parentRequires === "Event" && childRequires === "Event") {
-			return ["Event", "Function", "Event"];
+	private calculateSequenceShape(parentRequires: string, childRequires: string, sequenceLength: number) {
+		const sequenceExtension = [];
+		const extensionMap: { [key: string]: Array<string> } = {
+			EventFunction: ["Function", "Event"],
+			FunctionEvent: ["Event", "Function"],
+			FunctionFunction: ["Event"],
+			EventEvent: ["Function"],
+			Event: ["Function", "Event"],
+			Function: ["Event", "Function"],
+		};
+		let selectionKey = parentRequires + childRequires;
+		for (let i = 0; i < sequenceLength; i++) {
+			const extension = extensionMap[selectionKey];
+			sequenceExtension.push(...extension);
+			selectionKey = extension.at(-1);
 		}
-		if (parentRequires === "Function" && childRequires === "Function") {
-			return ["Function", "Event", "Function"];
-		}
-		if (parentRequires === "Function" && childRequires === "Event") {
-			return ["Function", "Event"];
-		}
-		if (parentRequires === "Event" && childRequires === "Function") {
-			return ["Event", "Function"];
-		}
+		return [parentRequires, ...sequenceExtension, childRequires];
 	}
 }
 
-const studentParameters = {
-	seed: 321, //Math.random(),
-	XORCardinality: 2,
-	ORCardinality: 2,
-	ANDCardinality: 2,
-	LOOPCardinality: 2,
-	depth: 3,
-	branchingRange: [2, 4],
-};
+const seed = Math.random();
+console.log(seed);
 
-const rng = new RNG(studentParameters.seed);
+const studentParameters = {
+	seed,
+	XORCardinality: 0,
+	ORCardinality: 0,
+	ANDCardinality: 1,
+	LOOPCardinality: 0,
+	depth: 1,
+	branchingRange: [2, 4],
+	populationRange: [0, 1],
+};
 
 const engine = new GraphGenerationEngine();
 
@@ -450,17 +510,24 @@ const cardinality =
 	studentParameters.LOOPCardinality;
 const graph = engine.generateGraph({
 	hostGraphArgs: {
-		hostGraphs: [
-			{
-				randomTree: {
-					provider: HostGraphProviders.TreeGenerator,
-					args: {
-						constructorArgs: { rng: rng },
-						providerArgs: { cardinality: cardinality, depth: studentParameters.depth },
+		hostGraphs: {
+			randomTree: {
+				provider: HostGraphProviders.TreeGenerator,
+				args: {
+					constructorArgs: {},
+					providerArgs: { cardinality: cardinality, depth: studentParameters.depth },
+				},
+			},
+			EPC: {
+				provider: HostGraphProviders.PatternGraphProvider,
+				args: {
+					constructorArgs: {},
+					providerArgs: {
+						schema: {},
 					},
 				},
 			},
-		],
+		},
 	},
 	graphLabelArgs: {
 		hostGraph: "randomTree",
@@ -476,16 +543,12 @@ const graph = engine.generateGraph({
 				LOOP: studentParameters.LOOPCardinality,
 			},
 		},
-		rng: rng,
 	},
 	graphTransformationArgs: {
 		labeledGraph: "randomTree",
+		populationRange: studentParameters.populationRange,
 	},
 });
-
-const util = require("util");
-
-// console.log(util.inspect(graph["hostGraphs"]["randomTree"].nodes(), { showHidden: false, depth: null, colors: true }));
 
 const treeSerialiser = new DOTSerialiser(graph["hostGraphs"]["randomTree"]);
 fs.writeFileSync("tree.dot", treeSerialiser.serialise());

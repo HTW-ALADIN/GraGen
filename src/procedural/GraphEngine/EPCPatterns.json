@@ -3,9 +3,9 @@
 		"nodes": [
 			{ "s0": { "type": "SEQ", "cardinality": [1, 1], "atomic": false, "shadowElement": true } },
 			{ "f1": { "type": "Function", "atomic": true, "shadowElement": false } },
-			{ "g0": { "type": "XORGate", "atomic": true, "shadowElement": false, "attributes": { "type": "opening" } } },
+			{ "g0": { "type": "XORGate", "atomic": true, "shadowElement": false, "attributes": { "status": "opening" } } },
 			{ "s1": { "type": "SEQ", "cardinality": [2, 4], "atomic": false, "shadowElement": true, "required": true } },
-			{ "g1": { "type": "XORGate", "atomic": true, "shadowElement": false, "attributes": { "type": "closing" } } },
+			{ "g1": { "type": "XORGate", "atomic": true, "shadowElement": false, "attributes": { "status": "closing" } } },
 			{ "s2": { "type": "SEQ", "cardinality": [1, 1], "atomic": false, "shadowElement": true } }
 		],
 		"edges": {
@@ -50,9 +50,9 @@
 		"nodes": [
 			{ "s0": { "type": "SEQ", "cardinality": [1, 1], "atomic": false, "shadowElement": true } },
 			{ "f1": { "type": "Function", "atomic": true, "shadowElement": false } },
-			{ "g0": { "type": "ORGate", "atomic": true, "shadowElement": false, "attributes": { "type": "opening" } } },
+			{ "g0": { "type": "ORGate", "atomic": true, "shadowElement": false, "attributes": { "status": "opening" } } },
 			{ "s1": { "type": "SEQ", "cardinality": [2, 4], "atomic": false, "shadowElement": true, "required": true } },
-			{ "g1": { "type": "ORGate", "atomic": true, "shadowElement": false, "attributes": { "type": "closing" } } },
+			{ "g1": { "type": "ORGate", "atomic": true, "shadowElement": false, "attributes": { "status": "closing" } } },
 			{ "s2": { "type": "SEQ", "cardinality": [1, 1], "atomic": false, "shadowElement": true } }
 		],
 		"edges": {
@@ -96,9 +96,9 @@
 	"AND": {
 		"nodes": [
 			{ "s0": { "type": "SEQ", "cardinality": [1, 1], "atomic": false, "shadowElement": true } },
-			{ "g0": { "type": "ANDGate", "atomic": true, "shadowElement": false, "attributes": { "type": "opening" } } },
+			{ "g0": { "type": "ANDGate", "atomic": true, "shadowElement": false, "attributes": { "status": "opening" } } },
 			{ "s1": { "type": "SEQ", "cardinality": [2, 4], "atomic": false, "shadowElement": true, "required": true } },
-			{ "g1": { "type": "ANDGate", "atomic": true, "shadowElement": false, "attributes": { "type": "closing" } } },
+			{ "g1": { "type": "ANDGate", "atomic": true, "shadowElement": false, "attributes": { "status": "closing" } } },
 			{ "s2": { "type": "SEQ", "cardinality": [1, 1], "atomic": false, "shadowElement": true } }
 		],
 		"edges": {
@@ -135,15 +135,32 @@
 	"LOOP": {
 		"nodes": [
 			{ "s0": { "type": "SEQ", "cardinality": [1, 1], "atomic": false, "shadowElement": true } },
-			{ "g0": { "type": "ORGate", "atomic": true, "shadowElement": false, "attributes": { "type": "closing" } } },
+			{ "e1": { "type": "Event", "cardinality": [1, 1], "atomic": true, "shadowElement": false } },
+			{ "g0": { "type": "ORGate", "atomic": true, "shadowElement": false, "attributes": { "status": "closing" } } },
 			{ "s1": { "type": "SEQ", "cardinality": [1, 1], "atomic": false, "shadowElement": true, "required": true } },
 			{ "f1": { "type": "Function", "atomic": true, "shadowElement": false } },
-			{ "g1": { "type": "XORGate", "atomic": true, "shadowElement": false, "attributes": { "type": "opening" } } },
-			{ "s2": { "type": "SEQ", "cardinality": [1, 1], "atomic": false, "shadowElement": true, "required": true } },
+			{ "g1": { "type": "XORGate", "atomic": true, "shadowElement": false, "attributes": { "status": "opening" } } },
+			{
+				"e2": {
+					"type": "Event",
+					"cardinality": [1, 1],
+					"atomic": true,
+					"attributes": { "backwards": true },
+					"shadowElement": false,
+					"required": false
+				}
+			},
 			{ "s3": { "type": "SEQ", "cardinality": [1, 1], "atomic": false, "shadowElement": true } }
 		],
 		"edges": {
 			"s0": {
+				"target": ["e1"],
+				"type": "edge",
+				"attributes": { "eligibleEdge": false },
+				"atomic": true,
+				"shadowElement": false
+			},
+			"e1": {
 				"target": ["g0"],
 				"type": "edge",
 				"attributes": { "eligibleEdge": false },
@@ -172,13 +189,13 @@
 				"shadowElement": false
 			},
 			"g1": {
-				"target": ["s2", "s3"],
+				"target": ["e2", "s3"],
 				"type": "edge",
 				"attributes": { "eligibleEdge": false },
 				"atomic": false,
 				"shadowElement": true
 			},
-			"s2": { "target": ["g0"], "type": "edge", "attributes": { "eligibleEdge": true } }
+			"e2": { "target": ["g0"], "type": "edge", "attributes": { "eligibleEdge": true } }
 		}
 	},
 	"SEQ": {

@@ -1,8 +1,12 @@
-import { TreeGenerator } from "./TreeGenerator";
 import { HostGraphProvider, ConstructorArgs, ProviderArgs } from "./HostGraphProvider";
+
+// load all host graph providers manually
+import { TreeGenerator } from "./HostGraphProviders/TreeGenerator";
+import { PatternGraphProvider } from "./HostGraphProviders/PatternGraphProvider";
 
 export enum HostGraphProviders {
 	TreeGenerator = "TreeGenerator",
+	PatternGraphProvider = "PatternGraphProvider",
 }
 
 export interface HostGraphProviderArgs {
@@ -14,8 +18,9 @@ type DerivedHostGraphProvider = { new (args: ConstructorArgs): HostGraphProvider
 
 export const HostGraphProviderMap = new Map<HostGraphProviders, DerivedHostGraphProvider>([
 	[HostGraphProviders.TreeGenerator, TreeGenerator],
+	[HostGraphProviders.PatternGraphProvider, PatternGraphProvider],
 ]);
 
 export interface HostGraphArgs {
-	hostGraphs: Array<{ [hostGraphName: string]: { provider: HostGraphProviders; args: HostGraphProviderArgs } }>;
+	hostGraphs: { [hostGraphName: string]: { provider: HostGraphProviders; args: HostGraphProviderArgs } };
 }
