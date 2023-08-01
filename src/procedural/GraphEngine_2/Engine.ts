@@ -1,5 +1,5 @@
 import Graph from "../Graph";
-import { HostGraphArgs, HostGraphProviderMap, HostGraphProviders } from "../HostGraph/HostGraphProviders";
+import { HostGraphArgs, HostGraphProviderMap, HostGraphProviders } from "../HostGraph/HostGraphProviderLoader";
 import { RNG, randomSample, statefulCounter } from "../Util";
 
 export type GenericFunction<T> = (args: any) => T;

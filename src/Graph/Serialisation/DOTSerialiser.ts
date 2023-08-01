@@ -1,4 +1,4 @@
-import Graph from "../Graph";
+import Graph from "../../procedural/Graph";
 
 interface GraphStyle {
 	nodes: {
