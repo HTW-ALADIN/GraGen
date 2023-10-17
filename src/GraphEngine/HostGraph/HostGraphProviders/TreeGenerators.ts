@@ -1,4 +1,4 @@
-import Graph from "../../../Graph/Graph";
+import { Graph } from "../../../Graph/Graph";
 import {
 	HostGraphGenerator,
 	HostGraphGeneratorParameters,

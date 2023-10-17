@@ -1,4 +1,4 @@
-import Graph from "../../Graph/Graph";
+import { Graph } from "../../Graph/Graph";
 import { RNG } from "../../Util/RNG";
 import { statefulCounter } from "../../Util/NumericalSeries";
 import { HostGraphProvider, ConstructorArgs, ProviderArgs } from "./HostGraphProvider";

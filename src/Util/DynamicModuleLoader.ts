@@ -7,11 +7,10 @@ export interface Classes {
 }
 
 export const dynamicModuleLoader = async (dir: string) => {
-	const modulesPath = path.join(__dirname, dir);
-	const modules = await fs.readdir(modulesPath);
+	const modules = await fs.readdir(dir);
 
 	return modules.reduce((modulesClasses, moduleName) => {
-		const modulePath = path.join(__dirname, dir, moduleName);
+		const modulePath = path.join(dir, moduleName);
 		const moduleClasses = require(modulePath);
 
 		modulesClasses = { ...modulesClasses, ...moduleClasses };

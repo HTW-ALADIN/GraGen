@@ -1,5 +1,5 @@
 import { Attributes } from "graphology-types";
-import Graph from "../../../Graph/Graph";
+import { Graph } from "../../../Graph/Graph";
 
 import { HostGraphProvider, ConstructorArgs, ProviderArgs } from "../HostGraphProvider";
 

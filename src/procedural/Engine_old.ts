@@ -3,9 +3,10 @@ import { RNG, randomSample, statefulCounter } from "./Util";
 import Graph from "./Graph";
 import { DOTSerialiser } from "../Graph/Serialisation/DOTSerialiser";
 import * as R from "remeda";
-import { dfsFromNode } from "graphology-traversal";
+import { dfsFromNode, bfsFromNode } from "graphology-traversal";
 import * as fs from "fs";
 import { v4 as uuidv4 } from "uuid";
+import { Condition, patternTypeConditions, nodeTypeConditions, evalCondition } from "./PromptBuilder/Conditionals";
 
 export interface GraphGenerationEngineArgs {
 	hostGraphArgs: HostGraphArgs;
@@ -57,6 +58,20 @@ export interface TransformationOrder {
 const jsonFile = fs.readFileSync(__dirname + "/EPCPatterns.json", "utf8");
 const EPCPatterns = JSON.parse(jsonFile);
 
+export interface PatternHierarchy {
+	[parentPatternId: string]: string | PatternHierarchy;
+}
+
+const intersect = (a: Set<any>, b: Set<string>) => {
+	const intersection = new Set();
+	for (const x of a) {
+		if (b.has(x)) {
+			intersection.add(x);
+		}
+	}
+	return intersection;
+};
+
 export class GraphGenerationEngine {
 	private hostGraphProviderMap: typeof HostGraphProviderMap;
 
@@ -66,21 +81,190 @@ export class GraphGenerationEngine {
 
 	private rng: RNG;
 
+	private graphElementCriteriaMap: Map<string, Set<string>>;
+
 	constructor() {
 		this.loadHostGraphProviders();
 	}
 
+	/********************************
+	 *
+	 * @param args
+	 * @returns
+	 *********************************/
 	public generateGraph(args: GraphGenerationEngineArgs) {
 		const { hostGraphArgs, graphLabelArgs, graphTransformationArgs } = args;
 		const seed = args.seed != undefined ? args.seed : Math.random();
+		console.log(seed);
 		this.rng = new RNG(seed);
 
 		this.hostGraphs = this.provideHostGraphs(hostGraphArgs);
 		this.labeledGraphs = this.generateGraphSchema(graphLabelArgs);
 		const transformationOrder = this.calculateTransformationOrder(graphTransformationArgs);
-		this.applyTransformationRules(graphTransformationArgs, transformationOrder);
+		const epc = this.applyTransformationRules(graphTransformationArgs, transformationOrder);
 
-		return { hostGraphs: this.hostGraphs, labeledGraphs: this.labeledGraphs };
+		// determine nesting of patterns for prompt generation
+		const startNode = epc.getNodeAttribute("0", "patternId");
+		const patternNestingMap = this.getPatternNestingMap(startNode.patternId);
+
+		// determine pattern aritiy for graph segmentation
+		const nodeVisits = this.determineNodeVisits(epc, patternNestingMap);
+
+		// determine graph segments for prompt generation
+		const segmentedGraph = this.segmentGraph(epc, nodeVisits);
+
+		return {
+			hostGraphs: this.hostGraphs,
+			labeledGraphs: this.labeledGraphs,
+			epc,
+			patternNestingMap,
+			nodeVisits,
+			segmentedGraph,
+		};
+	}
+
+	private determineNodeVisits(epc: Graph, patternNestingMap: PatternHierarchy) {
+		// initialise
+		const patternArity = Object.keys(patternNestingMap).reduce((patternArity, patternId) => {
+			patternArity[patternId] = {
+				arity: 0,
+				start: "",
+				end: "",
+				type: "",
+			};
+			return patternArity;
+		}, {} as { [key: string]: any });
+
+		const nodeVisits: { [key: string]: number } = {
+			0: 1,
+			1: 1,
+		};
+
+		dfsFromNode(epc, "0", (node, attributes, depth) => {
+			const { patternId, patternType, type, status } = attributes;
+
+			if (["ANDGate", "ORGate", "XORGate"].includes(type)) {
+				if (patternType !== "LOOP") {
+					// list info for regular patterns which start with openingGates and end with closingGates
+					if (status === "opening") {
+						// set "arity" to the number of opening branches
+
+						patternArity[patternId].arity = epc.outNeighbors(node).length;
+						patternArity[patternId].start = node;
+						patternArity[patternId].type = patternType;
+
+						nodeVisits[node] = 1;
+					}
+					if (status === "closing") {
+						patternArity[patternId].end = node;
+
+						nodeVisits[node] = patternArity[patternId].arity;
+					}
+				} else {
+					// list info for LOOP patterns which start with closingGates and end with openingGates
+					if (status === "closing") {
+						// set "arity" to the number of opening branches
+						patternArity[patternId].arity = epc.outNeighbors(node).length;
+						patternArity[patternId].start = node;
+						patternArity[patternId].type = patternType;
+
+						nodeVisits[node] = 1;
+					}
+					if (status === "opening") {
+						patternArity[patternId].end = node;
+
+						nodeVisits[node] = patternArity[patternId].arity;
+					}
+				}
+			}
+		});
+		return nodeVisits;
+	}
+
+	private segmentGraph(g: Graph, nodeVisits: { [key: string]: number }) {
+		const segments = [];
+
+		let nodeStack = ["0"];
+
+		let segment: Array<string> = [];
+		while (nodeStack.length) {
+			const node = nodeStack.pop();
+
+			// define endsegmentElement, gets populated if an ending condition is met and
+			// pushed as a segment, when it's nodeVisit count is 1
+			let endsegmentElement = null;
+
+			// build segment
+			segment.push(node);
+
+			// check for conditions that end a segment
+			const nodeAttributes = g.getNodeAttributes(node);
+			let foundCondition = "";
+			for (const nodeTypeConditionName in nodeTypeConditions) {
+				const condition = nodeTypeConditions[nodeTypeConditionName];
+				foundCondition = evalCondition(condition(), nodeTypeConditionName, nodeAttributes);
+
+				if (foundCondition) {
+					// if any condition regarding nodeType is met, pop ending segment as it is it's own segment
+					endsegmentElement = segment.pop();
+					// end segment
+					if (segment.length) segments.push(segment);
+					// ... and empty segment
+					segment = [];
+
+					// PROBABLY NOT NEEDED DUE TO VISITMAP OF SPECIAL NODES? (see above)
+					// depending on the condition, add "backtracking" behaviour
+					// if (foundCondition === "closing") {
+					// }
+
+					break;
+				}
+			}
+
+			// if node is included in the special node list (opening and closing gates) and
+			// was already visited the needed amount of times, go to the next iteration
+			if (Object.keys(nodeVisits).includes(node)) {
+				// decrease the amount of times the node needs to be visited, as one branch was completed
+				// this "backtracks" back to the branching node of the pattern ("bfs" behaviour)
+				if (nodeVisits[node] !== 1) {
+					nodeVisits[node]--;
+					continue;
+				} else {
+					// push endsegmentElement
+					segments.push([endsegmentElement]);
+				}
+				nodeVisits[node]--;
+			}
+
+			// add next nodes to stack
+			const successors = g.outNeighbors(node);
+			nodeStack = [...nodeStack, ...successors];
+		}
+
+		return segments;
+	}
+
+	private getPatternNestingMap(startNodePatternId: string) {
+		const randomTree = this.labeledGraphs.randomTree;
+		const nesting: { [key: string]: any } = {
+			[startNodePatternId]: null,
+		};
+
+		let parentPattern = startNodePatternId;
+		dfsFromNode(randomTree, "0", (node, attributes, depth) => {
+			const currentPattern = attributes.patternId;
+
+			// if root node, attach the startNode pattern Id as parent
+			if (depth === 0) {
+				nesting[currentPattern] = parentPattern;
+				return;
+			}
+
+			const [parent] = randomTree.inboundNeighbors(node);
+			parentPattern = randomTree.getNodeAttribute(parent, "patternId");
+			nesting[currentPattern] = parentPattern;
+		});
+		return nesting;
 	}
 
 	private provideHostGraphs(hostGraphArgs: HostGraphArgs): HostGraphs {
@@ -148,8 +332,9 @@ export class GraphGenerationEngine {
 				},
 				[]
 			);
-			const [[nodeType]] = randomSample<string>(eligibleNodeTypes, 1, false, rng);
+			const [[nodeType]] = randomSample<string>(eligibleNodeTypes, 1, false, this.rng);
 			labeledGraph.setNodeAttribute(node, "type", nodeType);
+			labeledGraph.setNodeAttribute(node, "patternId", uuidv4());
 
 			mutableSchemaDistribution[nodeType]--;
 		});
@@ -181,11 +366,12 @@ export class GraphGenerationEngine {
 
 		let parentId = idGenerator();
 		let childId = idGenerator();
-		epcGraph.addNode(parentId, { type: "Event", patternTypes: ["StartEPC"], patternIds: [uuidv4()] });
-		epcGraph.addNode(childId, { type: "Event", patternTypes: ["EndEPC"], patternIds: [uuidv4()] });
+		epcGraph.addNode(parentId, { type: "Event", patternType: "StartEPC", patternId: uuidv4() });
+		epcGraph.addNode(childId, { type: "Event", patternType: "EndEPC", patternId: uuidv4() });
 		let parentRequires = "Function";
 		let childRequires = "Function";
-		const patternIdMap: { [key: string]: string } = {};
+		// TODO: build structure for pattern hierarchy
+		const patternIdMap: PatternHierarchy = {};
 		for (const depth of Object.keys(depthNodeMap)) {
 			for (const node of depthNodeMap[Number(depth)]) {
 				// only select parent and child Node and their requirements if not root node
@@ -196,6 +382,11 @@ export class GraphGenerationEngine {
 						const { eligibleEdge, patternId: currentPatternId } = attributes;
 						return eligibleEdge && currentPatternId === parentPatternId;
 					});
+					// TODO: fix behavior if no eligible edge is found
+					if (edges && edges.length === 0) {
+						console.log(edges);
+						break;
+					}
 					const [[replacementEdge]] = randomSample(edges, 1, false, this.rng);
 
 					[parentId, childId] = epcGraph.extremities(replacementEdge);
@@ -206,7 +397,8 @@ export class GraphGenerationEngine {
 				}
 
 				const nodeType = graph.getNodeAttribute(node, "type");
-				const patternId = uuidv4();
+				// const patternId = uuidv4();
+				const patternId = graph.getNodeAttribute(node, "patternId");
 				this.constructPattern(
 					epcGraph,
 					nodeType,
@@ -225,6 +417,7 @@ export class GraphGenerationEngine {
 		const EPCStyle = JSON.parse(fs.readFileSync(__dirname + "/EPCShape.json", "utf8"));
 		const s = new DOTSerialiser(epcGraph, { nodes: EPCStyle });
 		fs.writeFileSync("epc.dot", s.serialise("both"));
+		return epcGraph;
 	}
 
 	private inferPathTypeRequirement(graph: Graph, nodeId: string) {
@@ -487,71 +680,77 @@ export class GraphGenerationEngine {
 	}
 }
 
-const seed = Math.random();
-console.log(seed);
+for (let i = 0; i < 1000; i++) {
+	// TODO: extract TESTCASE
+	const seed = Math.random();
 
-const studentParameters = {
-	seed,
-	XORCardinality: 0,
-	ORCardinality: 0,
-	ANDCardinality: 1,
-	LOOPCardinality: 0,
-	depth: 1,
-	branchingRange: [2, 4],
-	populationRange: [0, 1],
-};
+	const studentParameters = {
+		seed,
+		XORCardinality: 10,
+		ORCardinality: 10,
+		ANDCardinality: 1,
+		LOOPCardinality: 10,
+		depth: 2,
+		branchingRange: [2, 4], // actually decided per pattern in patternSchema (EPCPatterns.json)
+		populationRange: [0, 2],
+	};
 
-const engine = new GraphGenerationEngine();
+	const engine = new GraphGenerationEngine();
 
-const cardinality =
-	studentParameters.ANDCardinality +
-	studentParameters.ORCardinality +
-	studentParameters.XORCardinality +
-	studentParameters.LOOPCardinality;
-const graph = engine.generateGraph({
-	hostGraphArgs: {
-		hostGraphs: {
-			randomTree: {
-				provider: HostGraphProviders.TreeGenerator,
-				args: {
-					constructorArgs: {},
-					providerArgs: { cardinality: cardinality, depth: studentParameters.depth },
+	const cardinality =
+		studentParameters.ANDCardinality +
+		studentParameters.ORCardinality +
+		studentParameters.XORCardinality +
+		studentParameters.LOOPCardinality;
+	const graph = engine.generateGraph({
+		hostGraphArgs: {
+			hostGraphs: {
+				randomTree: {
+					provider: HostGraphProviders.TreeGenerator,
+					args: {
+						constructorArgs: {},
+						providerArgs: { cardinality: cardinality, depth: studentParameters.depth },
+					},
 				},
-			},
-			EPC: {
-				provider: HostGraphProviders.PatternGraphProvider,
-				args: {
-					constructorArgs: {},
-					providerArgs: {
-						schema: {},
+				EPC: {
+					provider: HostGraphProviders.PatternGraphProvider,
+					args: {
+						constructorArgs: {},
+						providerArgs: {
+							schema: {},
+						},
 					},
 				},
 			},
 		},
-	},
-	graphLabelArgs: {
-		hostGraph: "randomTree",
-		schema: {
-			nodes: ["AND", "OR", "XOR", "LOOP"],
-		},
-		application: {
-			type: "random",
-			schemaDistribution: {
-				AND: studentParameters.ANDCardinality,
-				OR: studentParameters.ORCardinality,
-				XOR: studentParameters.XORCardinality,
-				LOOP: studentParameters.LOOPCardinality,
+		graphLabelArgs: {
+			hostGraph: "randomTree",
+			schema: {
+				nodes: ["AND", "OR", "XOR", "LOOP"],
+			},
+			application: {
+				type: "random",
+				schemaDistribution: {
+					AND: studentParameters.ANDCardinality,
+					OR: studentParameters.ORCardinality,
+					XOR: studentParameters.XORCardinality,
+					LOOP: studentParameters.LOOPCardinality,
+				},
 			},
 		},
-	},
-	graphTransformationArgs: {
-		labeledGraph: "randomTree",
-		populationRange: studentParameters.populationRange,
-	},
-});
+		graphTransformationArgs: {
+			labeledGraph: "randomTree",
+			populationRange: studentParameters.populationRange,
+		},
+	});
 
-const treeSerialiser = new DOTSerialiser(graph["hostGraphs"]["randomTree"]);
-fs.writeFileSync("tree.dot", treeSerialiser.serialise());
+	const treeSerialiser = new DOTSerialiser(graph["hostGraphs"]["randomTree"]);
+	fs.writeFileSync("tree.dot", treeSerialiser.serialise());
 
-const labeledTreeSerialiser = new DOTSerialiser(graph["labeledGraphs"]["randomTree"]);
-fs.writeFileSync("labeled.dot", labeledTreeSerialiser.serialise("type"));
+	const labeledTreeSerialiser = new DOTSerialiser(graph["labeledGraphs"]["randomTree"]);
+	fs.writeFileSync("labeled.dot", labeledTreeSerialiser.serialise("type"));
+
+	const EPCStyle = JSON.parse(fs.readFileSync(__dirname + "/EPCShape.json", "utf8"));
+	const epcSerialiser = new DOTSerialiser(graph["epc"], { nodes: EPCStyle });
+	fs.writeFileSync(`./outputs/epc_${i}.dot`, epcSerialiser.serialise("type"));
+}
